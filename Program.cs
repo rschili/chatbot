@@ -1,4 +1,5 @@
 ﻿
+using Discord;
 using Discord.WebSocket;
 
 DotNetEnv.Env.TraversePath().Load();
@@ -31,14 +32,37 @@ Task ReadyAsync()
     return Task.CompletedTask;
 }
 
-Task MessageReceivedAsync(SocketMessage arg)
+const string buttonId = "rk2k9f920023";
+async Task MessageReceivedAsync(SocketMessage arg)
 {
-    throw new NotImplementedException();
+    // The bot should never respond to itself.
+    if (arg.Author.Id == client.CurrentUser.Id)
+        return;
+
+
+    if (arg.Content == "!ping")
+    {
+        // Create a new ComponentBuilder, in which dropdowns & buttons can be created.
+        var cb = new ComponentBuilder()
+            .WithButton("Click me!", buttonId, ButtonStyle.Primary);
+
+        // Send a message with content 'pong', including a button.
+        // This button needs to be build by calling .Build() before being passed into the call.
+        await arg.Channel.SendMessageAsync("pong!", components: cb.Build());
+    }
 }
 
-Task InteractionCreatedAsync(SocketInteraction interaction)
+async Task InteractionCreatedAsync(SocketInteraction interaction)
 {
-    throw new NotImplementedException();
+    if (interaction is SocketMessageComponent component)
+    {
+        // Check for the ID created in the button mentioned above.
+        if (component.Data.CustomId == buttonId)
+            await interaction.RespondAsync("Thank you for clicking my button!");
+
+        else
+            Console.WriteLine("An ID has been received that has no handler!");
+    }
 }
 
 Console.WriteLine("Hello, World!");
