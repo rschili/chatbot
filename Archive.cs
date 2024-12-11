@@ -68,7 +68,7 @@ namespace chatbot
     public class ArchivedMessage
     {
         public ulong Id { get; set; }
-        public string Content { get; set; }
+        public required string Content { get; set; }
         public ArchivedMessageType Type { get; set; }
         public ulong ChannelId { get; set; }
     }
