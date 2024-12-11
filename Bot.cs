@@ -14,12 +14,13 @@ namespace chatbot
         public required DiscordSocketClient Client { get; init; }
         public required Config Config { get; init; }
         public required CancellationTokenSource Cancellation { get; init; }
-
+        public Archive Archive { get; private init; }
         public ChatClient AI => _ai.Value;
         private readonly Lazy<ChatClient> _ai;
 
         public Bot()
         {
+            Archive = Archive.Create();
             _ai = new Lazy<ChatClient>(
                 () => {
                     if(Config == null)
@@ -36,7 +37,6 @@ namespace chatbot
             // The bot should never respond to itself.
             if (arg.Author.Id == Client.CurrentUser.Id)
                 return;
-
 
             if (arg.Content == "!ping")
             {

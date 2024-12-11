@@ -20,9 +20,21 @@ var bot = new Bot { Client = client, Config = config, Cancellation = cancellatio
 client.Log += LogAsync;
 client.Ready += ReadyAsync;
 
+await bot.Archive.AddMessageAsync(1, "Hello, World!", ArchivedMessageType.BotMessage, 1);
+await bot.Archive.AddMessageAsync(2, "Hello, World!", ArchivedMessageType.UserMessage, 1);
+await bot.Archive.AddMessageAsync(3, "Hello, World!", ArchivedMessageType.BotMessage, 1);
+await bot.Archive.AddMessageAsync(4, "Hello, World!", ArchivedMessageType.UserMessage, 1);
+var result = await bot.Archive.GetLastMessagesForChannelAsync(1, 2);
+foreach (var message in result)
+{
+    Console.WriteLine($"Id: {message.Id}, Content: {message.Content}, Type: {message.Type}, ChannelId: {message.ChannelId}");
+}
+return;
+
+
 Task LogAsync(Discord.LogMessage arg)
 {
-    Console.WriteLine(arg.ToString());
+    Console.WriteLine(arg.Message);
     return Task.CompletedTask;
 }
 
