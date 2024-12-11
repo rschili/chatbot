@@ -13,16 +13,16 @@ namespace chatbot
         private Archive()
         {
         }
-
-        public static Archive Create()
+        
+        public static async Task<Archive> CreateAsync()
         {
             SqliteConnectionStringBuilder conStringBuilder = new();
             conStringBuilder.DataSource = ":memory:";
             SqliteConnection connection = new(conStringBuilder.ConnectionString);
-            connection.Open();
+            await connection.OpenAsync();
             using var command = connection.CreateCommand();
             command.CommandText = "CREATE TABLE Messages (Id INTEGER PRIMARY KEY, Content TEXT NOT NULL, Type INTEGER NOT NULL, ChannelId INTEGER NOT NULL)";
-            command.ExecuteNonQuery();
+            await command.ExecuteNonQueryAsync();
 
             return new Archive { Connection = connection };
         }

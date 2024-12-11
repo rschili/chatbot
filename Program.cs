@@ -1,6 +1,7 @@
 ﻿
 using chatbot;
 using Discord.WebSocket;
+using OpenAI.Chat;
 
 Console.WriteLine("Loading variables...");
 Config config = Config.LoadFromEnvFile();
@@ -16,21 +17,12 @@ Console.WriteLine("Constructing Discord config...");
 var discordConfig = new DiscordSocketConfig { MessageCacheSize = 100, GatewayIntents = Discord.GatewayIntents.AllUnprivileged | Discord.GatewayIntents.MessageContent };
 var client = new DiscordSocketClient(discordConfig);
 bool isConnected = false;
-var bot = new Bot { Client = client, Config = config, Cancellation = cancellationTokenSource };
+var aiClient = new ChatClient(model: "gpt-4o", apiKey: config.OpenAiApiKey);
+var archive = await Archive.CreateAsync();
+
+var bot = new Bot { Client = client, Config = config, AI = aiClient, Archive = archive, Cancellation = cancellationTokenSource };
 client.Log += LogAsync;
 client.Ready += ReadyAsync;
-
-await bot.Archive.AddMessageAsync(1, "Hello, World!", ArchivedMessageType.BotMessage, 1);
-await bot.Archive.AddMessageAsync(2, "Hello, World!", ArchivedMessageType.UserMessage, 1);
-await bot.Archive.AddMessageAsync(3, "Hello, World!", ArchivedMessageType.BotMessage, 1);
-await bot.Archive.AddMessageAsync(4, "Hello, World!", ArchivedMessageType.UserMessage, 1);
-var result = await bot.Archive.GetLastMessagesForChannelAsync(1, 2);
-foreach (var message in result)
-{
-    Console.WriteLine($"Id: {message.Id}, Content: {message.Content}, Type: {message.Type}, ChannelId: {message.ChannelId}");
-}
-return;
-
 
 Task LogAsync(Discord.LogMessage arg)
 {

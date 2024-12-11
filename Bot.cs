@@ -14,22 +14,8 @@ namespace chatbot
         public required DiscordSocketClient Client { get; init; }
         public required Config Config { get; init; }
         public required CancellationTokenSource Cancellation { get; init; }
-        public Archive Archive { get; private init; }
-        public ChatClient AI => _ai.Value;
-        private readonly Lazy<ChatClient> _ai;
-
-        public Bot()
-        {
-            Archive = Archive.Create();
-            _ai = new Lazy<ChatClient>(
-                () => {
-                    if(Config == null)
-                        throw new InvalidOperationException("Config is not set");
-
-                    return new ChatClient(model: "gpt-4o", apiKey: Config.OpenAiApiKey);
-                    }
-                );
-        }
+        public Archive Archive { get; init; }
+        public ChatClient AI { get; init; }
 
         const string buttonId = "rk2k9f920023";
         public async Task MessageReceivedAsync(SocketMessage arg)
