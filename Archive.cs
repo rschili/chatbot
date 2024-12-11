@@ -46,7 +46,7 @@ namespace chatbot
 
         public async Task<List<ArchivedMessage>> GetLastMessagesForChannelAsync(ulong channelId, int count)
         {
-            var results = await Connection.QueryAsync<ArchivedMessage>("SELECT * FROM Messages WHERE ChannelId = @ChannelId ORDER BY Id DESC LIMIT @Count", new { ChannelId = channelId, Count = count });
+            var results = await Connection.QueryAsync<ArchivedMessage>("SELECT * FROM (SELECT * FROM Messages WHERE ChannelId = @ChannelId ORDER BY Id DESC LIMIT @Count) ORDER BY Id ASC", new { ChannelId = channelId, Count = count });
             return results.ToList();
             /*using var command = Connection.CreateCommand();
             command.CommandText = "SELECT * FROM (SELECT * FROM Messages WHERE ChannelId = @ChannelId ORDER BY Id DESC LIMIT @Count) ORDER BY Id ASC";

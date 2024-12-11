@@ -30,46 +30,57 @@ namespace chatbot
             if (arg.Type != MessageType.Default && arg.Type != MessageType.Reply)
                 return;
 
+            //check if the message is a command (single word starting with !)
+            if (arg.Content.StartsWith("!") && arg.Content.Length > 1 && !arg.Content.Contains(" "))
+            {
+                await CommandReceivedAsync(arg, arg.Content.Substring(1));
+                return;
+            }
+
+            bool mentioned = arg.Tags.Any((tag) =>
+            {
+                if (tag.Type == TagType.UserMention)
+                    return (tag.Value as IUser)?.Id == Client.CurrentUser.Id;
+
+                return false;
+            });
+
+            bool referenced = false;
+            if(arg.Reference != null && arg is SocketUserMessage userMessage)
+            {
+                referenced = userMessage.ReferencedMessage.Author.Id == Client.CurrentUser.Id;
+            }
+
             string sanitizedMessage = $"{arg.Author.Username}: {DiscordHelper.ReplaceUserTagsWithNicknames(arg)}";
             if(sanitizedMessage.Length > 200)
                 sanitizedMessage = sanitizedMessage.Substring(0, 200);
 
             await Archive.AddMessageAsync(arg.Id, sanitizedMessage, ArchivedMessageType.UserMessage, arg.Channel.Id);
 
-            if (arg.Content == "!ping")
-            {
-                var button = new ComponentBuilder().WithButton("Klick!", buttonId, ButtonStyle.Primary).Build();
-                await arg.Channel.SendMessageAsync("pong!", components: button);
+            if (!mentioned && !referenced)
                 return;
-            }
-            else if (arg.Content == "!shutdown")
-            {
-                if (arg.Author.Id == Config.DiscordAdminId)
-                {
-                    await arg.Channel.SendMessageAsync("In Ordnung...", messageReference: new MessageReference(messageId: arg.Id));
-                    Cancellation.Cancel();
-                }
-                else
-                {
-                    await arg.Channel.SendMessageAsync("Du bist nicht mein Chef.", messageReference: new MessageReference(messageId: arg.Id));
-                }
-                return;
-            }
 
-            
+            var history = await Archive.GetLastMessagesForChannelAsync(arg.Channel.Id, 10);
             var options = new ChatCompletionOptions
             {
                 MaxOutputTokenCount = 100,
             };
-            var messages = new List<ChatMessage>
+            var instructions = new List<ChatMessage>
             {
-                ChatMessage.CreateSystemMessage("Du bist ein Discord Chatbot. Antworte so kurz wie möglich."),
-                ChatMessage.CreateUserMessage(arg.Content)
+                ChatMessage.CreateSystemMessage($"Du bist ein Discord Chatbot, dein Name ist Noppelbot. Antworte so kurz wie möglich."),
             };
+
+            foreach (var message in history)
+            {
+                if(message.Type == ArchivedMessageType.UserMessage)
+                    instructions.Add(ChatMessage.CreateUserMessage(message.Content));
+                else
+                    instructions.Add(ChatMessage.CreateAssistantMessage(message.Content));
+            }
 
             try
             {
-                var response = await AI.CompleteChatAsync(messages, options);
+                var response = await AI.CompleteChatAsync(instructions, options);
                 if (response.Value.FinishReason != ChatFinishReason.Stop)
                 {
                     Console.WriteLine($"OpenAI call did not finish with Stop. Value was {response.Value.FinishReason}");
@@ -84,6 +95,30 @@ namespace chatbot
             catch(Exception ex)
             {
                 Console.WriteLine($"Ein Fehler ist aufgetreten beim call von OpenAI: {ex.Message}");
+            }
+        }
+
+        private async Task CommandReceivedAsync(SocketMessage arg, string command)
+        {
+            if (string.Equals("ping", command, StringComparison.OrdinalIgnoreCase))
+            {
+                var button = new ComponentBuilder().WithButton("Klick!", buttonId, ButtonStyle.Primary).Build();
+                await arg.Channel.SendMessageAsync("pong!", components: button);
+                return;
+            }
+
+            if (string.Equals("shutdown", command, StringComparison.OrdinalIgnoreCase))
+            {
+                if (arg.Author.Id == Config.DiscordAdminId)
+                {
+                    await arg.Channel.SendMessageAsync("In Ordnung...", messageReference: new MessageReference(messageId: arg.Id));
+                    Cancellation.Cancel();
+                }
+                else
+                {
+                    await arg.Channel.SendMessageAsync("Du bist nicht mein Chef.", messageReference: new MessageReference(messageId: arg.Id));
+                }
+                return;
             }
         }
 
