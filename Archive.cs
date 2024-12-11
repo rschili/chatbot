@@ -1,4 +1,5 @@
-﻿using Microsoft.Data.Sqlite;
+﻿using Dapper;
+using Microsoft.Data.Sqlite;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -45,7 +46,9 @@ namespace chatbot
 
         public async Task<List<ArchivedMessage>> GetLastMessagesForChannelAsync(ulong channelId, int count)
         {
-            using var command = Connection.CreateCommand();
+            var results = await Connection.QueryAsync<ArchivedMessage>("SELECT * FROM Messages WHERE ChannelId = @ChannelId ORDER BY Id DESC LIMIT @Count", new { ChannelId = channelId, Count = count });
+            return results.ToList();
+            /*using var command = Connection.CreateCommand();
             command.CommandText = "SELECT * FROM (SELECT * FROM Messages WHERE ChannelId = @ChannelId ORDER BY Id DESC LIMIT @Count) ORDER BY Id ASC";
             command.Parameters.AddWithValue("@ChannelId", channelId);
             command.Parameters.AddWithValue("@Count", count);
@@ -61,7 +64,7 @@ namespace chatbot
                     ChannelId = await reader.GetFieldValueAsync<ulong>(3)
                 });
             }
-            return messages;
+            return messages;*/
         }
     }
 

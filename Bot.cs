@@ -14,15 +14,27 @@ namespace chatbot
         public required DiscordSocketClient Client { get; init; }
         public required Config Config { get; init; }
         public required CancellationTokenSource Cancellation { get; init; }
-        public Archive Archive { get; init; }
-        public ChatClient AI { get; init; }
+        public required Archive Archive { get; init; }
+        public required ChatClient AI { get; init; }
 
         const string buttonId = "rk2k9f920023";
         public async Task MessageReceivedAsync(SocketMessage arg)
         {
             // The bot should never respond to itself.
             if (arg.Author.Id == Client.CurrentUser.Id)
+            {
+                await Archive.AddMessageAsync(arg.Id, arg.Content, ArchivedMessageType.BotMessage, arg.Channel.Id);
                 return;
+            }
+
+            if (arg.Type != MessageType.Default && arg.Type != MessageType.Reply)
+                return;
+
+            string sanitizedMessage = $"{arg.Author.Username}: {DiscordHelper.ReplaceUserTagsWithNicknames(arg)}";
+            if(sanitizedMessage.Length > 200)
+                sanitizedMessage = sanitizedMessage.Substring(0, 200);
+
+            await Archive.AddMessageAsync(arg.Id, sanitizedMessage, ArchivedMessageType.UserMessage, arg.Channel.Id);
 
             if (arg.Content == "!ping")
             {
@@ -44,6 +56,7 @@ namespace chatbot
                 return;
             }
 
+            
             var options = new ChatCompletionOptions
             {
                 MaxOutputTokenCount = 100,
