@@ -22,7 +22,7 @@ namespace chatbot
 
                 var user = tag.Value as IUser;
                 var guildUser = user as IGuildUser;
-                string nick = guildUser?.Nickname ?? user?.Username;
+                string? nick = guildUser?.Nickname ?? user?.GlobalName ?? user?.Username;
                 if (!string.IsNullOrEmpty(nick))
                 {
                     text.Remove(tag.Index + indexOffset, tag.Length);
@@ -30,7 +30,7 @@ namespace chatbot
                     indexOffset += nick.Length - tag.Length;
                 }
             }
-                
+
             return text.ToString();
         }
     }
