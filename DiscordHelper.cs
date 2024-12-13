@@ -21,8 +21,7 @@ namespace chatbot
                     continue;
 
                 var user = tag.Value as IUser;
-                var guildUser = user as IGuildUser;
-                string? nick = guildUser?.Nickname ?? user?.GlobalName ?? user?.Username;
+                string? nick = GetDisplayName(user);
                 if (!string.IsNullOrEmpty(nick))
                 {
                     text.Remove(tag.Index + indexOffset, tag.Length);
@@ -32,6 +31,12 @@ namespace chatbot
             }
 
             return text.ToString();
+        }
+
+        internal static string GetDisplayName(IUser? user)
+        {
+            var guildUser = user as IGuildUser;
+            return guildUser?.Nickname ?? user?.GlobalName ?? user?.Username ?? "";
         }
     }
 }

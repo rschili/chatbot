@@ -6,11 +6,14 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using OpenAI.Chat;
+using System.Collections.Concurrent;
 
 namespace chatbot
 {
     internal class Bot
     {
+        private readonly ConcurrentDictionary<ulong, (DateTimeOffset lastUpdate, string activeUsers)> _channelUsersCache = new();
+
         public required DiscordSocketClient Client { get; init; }
         public required Config Config { get; init; }
         public required CancellationTokenSource Cancellation { get; init; }
@@ -46,13 +49,13 @@ namespace chatbot
             });
 
             bool referenced = false;
-            if(arg.Reference != null && arg is SocketUserMessage userMessage)
+            if (arg.Reference != null && arg is SocketUserMessage userMessage)
             {
                 referenced = userMessage.ReferencedMessage.Author.Id == Client.CurrentUser.Id;
             }
 
-            string sanitizedMessage = $"{arg.Author.Username}: {DiscordHelper.ReplaceUserTagsWithNicknames(arg)}";
-            if(sanitizedMessage.Length > 200)
+            string sanitizedMessage = $"{DiscordHelper.GetDisplayName(arg.Author)}: {DiscordHelper.ReplaceUserTagsWithNicknames(arg)}";
+            if (sanitizedMessage.Length > 200)
                 sanitizedMessage = sanitizedMessage.Substring(0, 200);
 
             await Archive.AddMessageAsync(arg.Id, sanitizedMessage, ArchivedMessageType.UserMessage, arg.Channel.Id);
@@ -60,19 +63,26 @@ namespace chatbot
             if (!mentioned && !referenced)
                 return;
 
+            await arg.Channel.TriggerTypingAsync();
             var history = await Archive.GetLastMessagesForChannelAsync(arg.Channel.Id, 10);
             var options = new ChatCompletionOptions
             {
                 MaxOutputTokenCount = 100,
             };
+
+            var channelUsers = await GetChannelUsersAsync(arg.Channel);
+
             var instructions = new List<ChatMessage>
-            {
-                ChatMessage.CreateSystemMessage($"Du bist ein Discord Chatbot, dein Name ist Noppelbot. Antworte so kurz wie möglich."),
-            };
+                {
+                    ChatMessage.CreateSystemMessage($"Du bist ein Discord Chatbot, dein Name ist {DiscordHelper.GetDisplayName(Client.CurrentUser)}. Antworte so kurz wie möglich."),
+                    ChatMessage.CreateSystemMessage($"Nachrichten werden im Format 'Name: Nachricht' an dich gegeben, deine Antworten lieferst du bitte nur als Nachricht."),
+                };
+            if(!string.IsNullOrWhiteSpace(channelUsers))
+                instructions.Add(ChatMessage.CreateSystemMessage($"Aktive Benutzer: {channelUsers}"));
 
             foreach (var message in history)
             {
-                if(message.Type == ArchivedMessageType.UserMessage)
+                if (message.Type == ArchivedMessageType.UserMessage)
                     instructions.Add(ChatMessage.CreateUserMessage(message.Content));
                 else
                     instructions.Add(ChatMessage.CreateAssistantMessage(message.Content));
@@ -86,16 +96,30 @@ namespace chatbot
                     Console.WriteLine($"OpenAI call did not finish with Stop. Value was {response.Value.FinishReason}");
                     return;
                 }
-                foreach(var content in response.Value.Content)
+                foreach (var content in response.Value.Content)
                 {
-                    if(content.Kind != ChatMessageContentPartKind.Text || !string.IsNullOrEmpty(content.Text))
+                    if (content.Kind != ChatMessageContentPartKind.Text || !string.IsNullOrEmpty(content.Text))
                         await arg.Channel.SendMessageAsync(content.Text);
                 }
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
                 Console.WriteLine($"Ein Fehler ist aufgetreten beim call von OpenAI: {ex.Message}");
             }
+        }
+
+        private async Task<string> GetChannelUsersAsync(ISocketMessageChannel channel)
+        {
+            if (_channelUsersCache.TryGetValue(channel.Id, out var cacheEntry) && cacheEntry.lastUpdate > DateTimeOffset.Now.AddMinutes(-10))
+            {
+                return cacheEntry.activeUsers;
+            }
+
+            var users = await channel.GetUsersAsync(CacheMode.AllowDownload).FlattenAsync();
+            var userNames = users.Where(u => !u.IsBot).Take(10).Select(u => DiscordHelper.GetDisplayName(u));
+            var joinedNames = string.Join(", ", userNames);
+            _channelUsersCache[channel.Id] = (DateTimeOffset.Now, joinedNames);
+            return joinedNames;
         }
 
         private async Task CommandReceivedAsync(SocketMessage arg, string command)
