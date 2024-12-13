@@ -75,7 +75,7 @@ namespace chatbot
             var instructions = new List<ChatMessage>
                 {
                     ChatMessage.CreateSystemMessage($"Du bist ein Discord Chatbot, dein Name ist {DiscordHelper.GetDisplayName(Client.CurrentUser)}. Antworte so kurz wie möglich."),
-                    ChatMessage.CreateSystemMessage($"Nachrichten werden im Format 'Name: Nachricht' an dich gegeben, deine Antworten lieferst du bitte nur als Nachricht."),
+                    ChatMessage.CreateSystemMessage($"Nachrichten werden im Format 'Name: Nachricht' an dich übergegeben."),
                 };
             if(!string.IsNullOrWhiteSpace(channelUsers))
                 instructions.Add(ChatMessage.CreateSystemMessage($"Aktive Benutzer: {channelUsers}"));
@@ -99,13 +99,27 @@ namespace chatbot
                 foreach (var content in response.Value.Content)
                 {
                     if (content.Kind != ChatMessageContentPartKind.Text || !string.IsNullOrEmpty(content.Text))
-                        await arg.Channel.SendMessageAsync(content.Text);
+                        await arg.Channel.SendMessageAsync(DropPotentialPrefix(content.Text));
                 }
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"Ein Fehler ist aufgetreten beim call von OpenAI: {ex.Message}");
             }
+        }
+
+        private string DropPotentialPrefix(string text)
+        {
+            int colonIndex = text.IndexOf(':');
+            if (colonIndex > 0)
+            {
+                string prefix = text.Substring(0, colonIndex);
+                if (prefix.All(char.IsLetter))
+                {
+                    return text.Substring(colonIndex + 1).TrimStart();
+                }
+            }
+            return text;
         }
 
         private async Task<string> GetChannelUsersAsync(ISocketMessageChannel channel)
