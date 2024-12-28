@@ -12,6 +12,9 @@ namespace chatbot
         public required ulong DiscordAdminId { get; init; }
         public required string OpenAiApiKey { get; init; }
 
+        public required string SeqApiKey { get; init; }
+        public required string SeqUrl { get; init; }
+
 
         public static Config LoadFromEnvFile()
         {
@@ -35,8 +38,25 @@ namespace chatbot
             {
                 throw new KeyNotFoundException("OPENAI_API_KEY is not set");
             }
+            var seqApiKey = Environment.GetEnvironmentVariable("SEQ_API_KEY");
+            if (string.IsNullOrEmpty(seqApiKey))
+            {
+                throw new KeyNotFoundException("SEQ_API_KEY is not set");
+            }
+            var seqUrl = Environment.GetEnvironmentVariable("SEQ_URL");
+            if (string.IsNullOrEmpty(seqUrl))
+            {
+                throw new KeyNotFoundException("SEQ_URL is not set");
+            }
 
-            return new Config { DiscordAdminId = discordAdminId, DiscordToken = discordToken, OpenAiApiKey = openAiApiKey };
+            return new Config 
+            {
+                DiscordAdminId = discordAdminId,
+                DiscordToken = discordToken,
+                OpenAiApiKey = openAiApiKey,
+                SeqApiKey = seqApiKey,
+                SeqUrl = seqUrl
+            };
         }
     }
 }

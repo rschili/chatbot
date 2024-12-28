@@ -1,32 +1,45 @@
-﻿
-using chatbot;
+﻿using chatbot;
 using Discord.WebSocket;
 using OpenAI.Chat;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 Console.WriteLine("Loading variables...");
 Config config = Config.LoadFromEnvFile();
+
+// Set up dependency injection
+var services = new ServiceCollection()
+    .AddHttpClient()
+    .AddLogging(builder =>
+    {
+        builder.AddSimpleConsole();
+        builder.AddSeq(config.SeqUrl, config.SeqApiKey);
+    }).BuildServiceProvider();
+
+ILogger<Program> log = services.GetRequiredService<ILogger<Program>>();
 
 var cancellationTokenSource = new CancellationTokenSource();
 Console.CancelKeyPress += (sender, e) =>
 {
     e.Cancel = true;
     cancellationTokenSource.Cancel();
+    log.LogInformation("Cancellation requested via Ctrl+C.");
 };
 
-Console.WriteLine("Constructing Discord config...");
+log.LogInformation("Constructing Discord config...");
 var discordConfig = new DiscordSocketConfig { MessageCacheSize = 100, GatewayIntents = Discord.GatewayIntents.AllUnprivileged | Discord.GatewayIntents.MessageContent };
 var client = new DiscordSocketClient(discordConfig);
 bool isConnected = false;
 var aiClient = new ChatClient(model: "gpt-4o", apiKey: config.OpenAiApiKey);
 var archive = await Archive.CreateAsync();
 
-var bot = new Bot { Client = client, Config = config, AI = aiClient, Archive = archive, Cancellation = cancellationTokenSource };
+var bot = new Bot { Client = client, Config = config, AI = aiClient, Archive = archive, Logger = log, Cancellation = cancellationTokenSource };
 client.Log += LogAsync;
 client.Ready += ReadyAsync;
 
 Task LogAsync(Discord.LogMessage arg)
 {
-    Console.WriteLine(arg.Message);
+    log.LogInformation(arg.Message);
     return Task.CompletedTask;
 }
 
@@ -34,22 +47,22 @@ Task ReadyAsync()
 {
     if (isConnected)
     {
-        Console.WriteLine("ReadyAsync was called, but discord User is already connected!");
+        log.LogWarning("ReadyAsync was called, but discord User is already connected!");
         return Task.CompletedTask;
     }
 
     isConnected = true;
     client.MessageReceived += async (arg) => await Task.Run(() => bot.MessageReceivedAsync(arg));
     client.InteractionCreated += async (arg) => await Task.Run(() => bot.InteractionCreatedAsync(arg));
-    Console.WriteLine($"Discord User {client.CurrentUser} is connected!");
+    log.LogInformation($"Discord User {client.CurrentUser} is connected!");
     return Task.CompletedTask;
 }
 
-Console.WriteLine("Logging into Discord...");
+log.LogInformation("Logging into Discord...");
 await client.LoginAsync(Discord.TokenType.Bot, config.DiscordToken);
-Console.WriteLine("Connecting to Discord...");
+log.LogInformation("Connecting to Discord...");
 await client.StartAsync();
-Console.WriteLine("Ready. Press cancel (Ctrl+C) or send !shutdown message in discord to exit.");
+log.LogInformation("Ready. Press cancel (Ctrl+C) or send !shutdown message in discord to exit.");
 
 try
 {
@@ -57,16 +70,15 @@ try
 }
 catch (TaskCanceledException)
 {
-    Console.WriteLine("Cancellation requested, shutting down...");
+    log.LogInformation("Cancellation requested, shutting down...");
 }
 catch (Exception ex)
 {
-    Console.WriteLine($"An error occurred: {ex.Message}. Shutting down...");
+    log.LogError(ex, "An error occurred. Shutting down...");
 }
 
-Console.WriteLine("Logging out...");
+log.LogInformation("Logging out...");
 await client.LogoutAsync();
-Console.WriteLine("Disposing client...");
+log.LogInformation("Disposing client...");
 await client.DisposeAsync();
-Console.WriteLine("Shutdown complete.");
-
+log.LogInformation("Shutdown complete.");

@@ -7,6 +7,8 @@ using System.Text;
 using System.Threading.Tasks;
 using OpenAI.Chat;
 using System.Collections.Concurrent;
+using Microsoft.Extensions.Logging;
+using System.Runtime.ConstrainedExecution;
 
 namespace chatbot
 {
@@ -19,6 +21,7 @@ namespace chatbot
         public required CancellationTokenSource Cancellation { get; init; }
         public required Archive Archive { get; init; }
         public required ChatClient AI { get; init; }
+        public required ILogger Logger { get; init; }
 
         const string buttonId = "rk2k9f920023";
         public async Task MessageReceivedAsync(SocketMessage arg)
@@ -33,7 +36,7 @@ namespace chatbot
             if (arg.Type != MessageType.Default && arg.Type != MessageType.Reply)
                 return;
 
-            //check if the message is a command (single word starting with !)
+            // Check if the message is a command (single word starting with !)
             if (arg.Content.StartsWith("!") && arg.Content.Length > 1 && !arg.Content.Contains(" "))
             {
                 await CommandReceivedAsync(arg, arg.Content.Substring(1));
@@ -74,10 +77,15 @@ namespace chatbot
 
             var instructions = new List<ChatMessage>
                 {
-                    ChatMessage.CreateSystemMessage($"Du bist ein Discord Chatbot, dein Name ist {DiscordHelper.GetDisplayName(Client.CurrentUser)}. Antworte so kurz wie möglich."),
+                    ChatMessage.CreateSystemMessage("""
+                        Du bist Professor Ogden Wernstrom und nimmst in einem Discord Chat teil. Antworte so kurz wie möglich.
+                        Wernstrom ist ein Hochintelligenter und extrem ehrgeiziger Wissenschaftler aus Futurama.
+                        Er ist ein ehemaliger Student und erbitterter Rivale von Professor Farnsworth, getrieben von Rachsucht und Arroganz.
+                        Wernstrom ist stolz, eigenwillig und hat wenig Geduld für die Meinungen anderer, oft bereit, fragwürdige Experimente durchzuführen, um sich zu beweisen.
+                        """),
                     ChatMessage.CreateSystemMessage($"Nachrichten werden im Format 'Name: Nachricht' an dich übergegeben."),
                 };
-            if(!string.IsNullOrWhiteSpace(channelUsers))
+            if (!string.IsNullOrWhiteSpace(channelUsers))
                 instructions.Add(ChatMessage.CreateSystemMessage($"Aktive Benutzer: {channelUsers}"));
 
             foreach (var message in history)
@@ -93,9 +101,10 @@ namespace chatbot
                 var response = await AI.CompleteChatAsync(instructions, options);
                 if (response.Value.FinishReason != ChatFinishReason.Stop)
                 {
-                    Console.WriteLine($"OpenAI call did not finish with Stop. Value was {response.Value.FinishReason}");
+                    Logger.LogWarning($"OpenAI call did not finish with Stop. Value was {response.Value.FinishReason}");
                     return;
                 }
+                Logger.LogInformation("OpenAI call finished with Stop. Token Count: {TokenCount}.", response.Value.Usage.TotalTokenCount);
                 foreach (var content in response.Value.Content)
                 {
                     if (content.Kind != ChatMessageContentPartKind.Text || !string.IsNullOrEmpty(content.Text))
@@ -104,7 +113,7 @@ namespace chatbot
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Ein Fehler ist aufgetreten beim call von OpenAI: {ex.Message}");
+                Logger.LogError(ex, "An error occurred during the OpenAI call.");
             }
         }
 
@@ -168,7 +177,7 @@ namespace chatbot
                 if (component.Data.CustomId == buttonId)
                     await interaction.RespondAsync("Danke, dass du meinen Knopf gedrückt hast.");
                 else
-                    Console.WriteLine("An ID has been received that has no handler!");
+                    Logger.LogWarning("An ID has been received that has no handler!");
             }
         }
     }
