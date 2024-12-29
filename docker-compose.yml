@@ -4,7 +4,6 @@ services:
     ports:
       - "4422:4422"
     volumes:
-      - .:/app
       - chatbot-data:/data
     environment:
       DISCORD_TOKEN: ""
