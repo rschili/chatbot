@@ -1,0 +1,15 @@
+version: '3.8'
+
+services:
+  app:
+    build: .
+    ports:
+      - "4422:4422"
+    volumes:
+      - .:/app
+      - chatbot-data:/data
+    env_file:
+      - .env
+
+volumes:
+  chatbot-data:
