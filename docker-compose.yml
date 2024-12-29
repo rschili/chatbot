@@ -6,8 +6,12 @@ services:
     volumes:
       - .:/app
       - chatbot-data:/data
-    env_file:
-      - .env
+    environment:
+      DISCORD_TOKEN: ""
+      DISCORD_ADMIN_ID: ""
+      OPENAI_API_KEY: ""
+      SEQ_API_KEY: ""
+      SEQ_URL: ""
 
 volumes:
   chatbot-data:
