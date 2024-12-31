@@ -24,6 +24,8 @@ namespace chatbot
         public required ChatClient AI { get; init; }
         public required ILogger Logger { get; init; }
 
+        private LeakyBucketRateLimiter _rateLimiter = new(10, 60);
+
         const string buttonId = "rk2k9f920023";
         public async Task MessageReceivedAsync(SocketMessage arg)
         {
@@ -65,6 +67,9 @@ namespace chatbot
             await Archive.AddMessageAsync(arg.Id, sanitizedMessage, ArchivedMessageType.UserMessage, arg.Channel.Id);
 
             if (!mentioned && !referenced)
+                return;
+
+            if (arg.Author.IsBot || !_rateLimiter.Leak())
                 return;
 
             await arg.Channel.TriggerTypingAsync();
