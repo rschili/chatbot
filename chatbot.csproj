@@ -9,11 +9,11 @@
 
   <ItemGroup>
     <PackageReference Include="Dapper" Version="2.1.35" />
-    <PackageReference Include="Discord.Net.WebSocket" Version="3.17.0" />
+    <PackageReference Include="Discord.Net.WebSocket" Version="3.17.1" />
     <PackageReference Include="DotNetEnv" Version="3.1.1" />
     <PackageReference Include="Matrix.Sdk" Version="1.0.9" />
     <PackageReference Include="Microsoft.Data.Sqlite" Version="9.0.1" />
-    <PackageReference Include="Microsoft.Extensions.Hosting" Version="9.0.1" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="9.0.2" />
     <PackageReference Include="OpenAI" Version="2.1.0" />
     <PackageReference Include="Seq.Extensions.Logging" Version="9.0.0-dev-00129" />
   </ItemGroup>
