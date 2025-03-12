@@ -1,10 +1,10 @@
-FROM mcr.microsoft.com/dotnet/sdk:9.0@sha256:7f8e8b1514a2eeccb025f1e9dd554e191b21afa7f43f8321b7bd2009cdd59a1d AS build-env
+FROM mcr.microsoft.com/dotnet/sdk:9.0@sha256:4845ef954a33b55c1a1f5db1ac24ba6cedb1dafb7f0b6a64ebce2fabe611f0c0 AS build-env
 WORKDIR /Noppelbot
 COPY . ./
 RUN dotnet restore
 RUN dotnet publish -c Release -o out
 
-FROM mcr.microsoft.com/dotnet/runtime:9.0.2@sha256:da09ba013a4ceb463e17b77c821acdd81d17f26384227340a31690d3bf0044bc
+FROM mcr.microsoft.com/dotnet/runtime:9.0.3@sha256:03fe3b9f932fc9c3d1a76c6a0fecc8e2f1b9ed302deda29f920d81e50c9aad6f
 WORKDIR /Noppelbot
 COPY --from=build-env /Noppelbot/out .
 ENTRYPOINT ["./chatbot"]
